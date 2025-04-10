@@ -15,7 +15,7 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "7923861978:AAGWrEPgItrlkzBtmYmIXdbKNdNJVb4UPBw")
 TWELVE_DATA_API_KEY = os.getenv("TWELVE_DATA_API_KEY", "354c41fa243c4677a4491f35884d1fcb")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY", "ad9b0b15337042daad8d7597354db4ee")
-RENDER_URL = os.getenv("RENDER_URL", "https://trading-bot-jarvis.onrender.com")  # Cambia por tu URL en Render
+RENDER_URL = os.getenv("RENDER_URL", "https://jarvis-wdpa.onrender.com")  # ¡URL actualizada aquí!
 
 # Base de datos para alertas
 conn = sqlite3.connect("alerts.db", check_same_thread=False)
