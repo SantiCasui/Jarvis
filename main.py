@@ -3,7 +3,7 @@ import sqlite3
 import schedule
 import time
 from datetime import datetime
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 from dotenv import load_dotenv
 import os
@@ -15,6 +15,7 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "7923861978:AAGWrEPgItrlkzBtmYmIXdbKNdNJVb4UPBw")
 TWELVE_DATA_API_KEY = os.getenv("TWELVE_DATA_API_KEY", "354c41fa243c4677a4491f35884d1fcb")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY", "ad9b0b15337042daad8d7597354db4ee")
+RENDER_URL = os.getenv("RENDER_URL", "https://trading-bot-jarvis.onrender.com")  # Cambia por tu URL en Render
 
 # Base de datos para alertas
 conn = sqlite3.connect("alerts.db", check_same_thread=False)
@@ -30,10 +31,10 @@ def get_real_time_price(symbol: str) -> float:
 # Mensaje de inicio personalizado
 def start(update: Update, context: CallbackContext):
     update.message.reply_text("¿En qué puedo ayudarle, Señor? 👨💼\n\n"
-                             "Comandos disponibles:\n"
-                             "/precios - Muestra cotizaciones en tiempo real\n"
-                             "/alerta <activo> <precio> - Configura una alerta\n"
-                             "/noticias - Últimas noticias financieras")
+                            "Comandos disponibles:\n"
+                            "/precios - Muestra cotizaciones en tiempo real\n"
+                            "/alerta <activo> <precio> - Configura una alerta\n"
+                            "/noticias - Últimas noticias financieras")
 
 # Comando /precios
 def precios(update: Update, context: CallbackContext):
@@ -69,20 +70,20 @@ def set_alerta(update: Update, context: CallbackContext):
     conn.commit()
     update.message.reply_text(f"✅ Alerta configurada: {symbol} a {target_price}")
 
-# Comando /noticias
-def noticias(update: Update, context: CallbackContext):
-    fetch_news(context, update.message.chat_id)
-
 # Función para obtener noticias
 def fetch_news(context: CallbackContext, chat_id: int):
     url = f"https://newsapi.org/v2/everything?q=bitcoin+OR+forex+OR+NASDAQ&language=es&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
     news = requests.get(url).json()
-    for article in news["articles"][:3]:  # Top 3 noticias
+    for article in news["articles"][:3]:
         context.bot.send_message(
             chat_id=chat_id,
             text=f"📰 *{article['title']}*\n{article['url']}",
             parse_mode="Markdown"
         )
+
+# Comando /noticias
+def noticias(update: Update, context: CallbackContext):
+    fetch_news(context, update.message.chat_id)
 
 # Verificar alertas
 def check_alerts(context: CallbackContext):
@@ -102,10 +103,10 @@ def check_alerts(context: CallbackContext):
 # Enviar noticias al abrir el mercado (8:00 AM UTC)
 def send_market_open_news(context: CallbackContext):
     now = datetime.utcnow()
-    if now.hour == 8 and now.minute == 0:  # Hora de apertura del mercado
+    if now.hour == 8 and now.minute == 0:
         fetch_news(context, context.job.context)
 
-# Inicializar el bot
+# Inicializar el bot con webhook
 def main():
     updater = Updater(TELEGRAM_TOKEN)
     dp = updater.dispatcher
@@ -119,11 +120,18 @@ def main():
     # Programar tareas
     job_queue = updater.job_queue
     job_queue.run_repeating(check_alerts, interval=60, first=0)  # Cada 1 minuto
-    job_queue.run_repeating(send_market_open_news, interval=60, first=0)  # Verificar cada minuto si es hora de noticias
     job_queue.run_repeating(lambda ctx: fetch_news(ctx, TU_CHAT_ID), interval=10800, first=0)  # Cada 3 horas
+    job_queue.run_repeating(send_market_open_news, interval=60, first=0)  # Verificar apertura del mercado
 
-    updater.start_polling()
-    updater.idle()
+    # Configuración para Render (webhook)
+    PORT = int(os.environ.get("PORT", 10000))
+    updater.start_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path=TELEGRAM_TOKEN,
+        webhook_url=f"{RENDER_URL}/{TELEGRAM_TOKEN}"
+    )
+    updater.bot.setWebhook(f"{RENDER_URL}/{TELEGRAM_TOKEN}")
 
 if __name__ == "__main__":
     main()
